@@ -51,7 +51,7 @@ typedef struct TreeNode {
 // Global variables
 const char* separators[] = {":=","-=", "+=",";","*","\""}; 
 const int sep_count = 6;
-const char* keywords[]={"number","repeat","times","write","and","newline"}; 
+const char* keywords[]={"number","repeat","times","write","and","newline"};  // Keywords dizisi tanımı 
 
 Token tokens[1000];
 int token_count = 0;
@@ -92,7 +92,7 @@ Token getCurrentToken();
 Token peekNextToken();
 void consumeToken();
 
-// Lexer functions
+// Lexer fonksiyonları
 void replaceSeperator(char *line) {
     for (int i = 0; i < sep_count; i++) {
         char *pos = line;
@@ -115,6 +115,7 @@ int isNumber(const char *str) {
     return (*endptr == '\0');
 }
 
+// Variable management fonksiyonları
 void addVariable(const char* var) {
     if (varCount < MAX_VARS) {
         strcpy(declaredVariables[varCount++], var);
@@ -137,7 +138,7 @@ void addToken(TokenType type, const char* value, int line) {
     }
 }
 
-
+// Blok kontrolleri ve identifier olarak işaretleme
 void keywordType(char *type, int lineNumber) {
     if (strcmp(type, "number") == 0) { 
         addToken(TOKEN_KEYWORD, type, lineNumber);
@@ -170,6 +171,7 @@ void keywordType(char *type, int lineNumber) {
         addToken(TOKEN_IDENTIFIER, type, lineNumber);
     }
 }
+
 // Parser helper functions
 Token getCurrentToken() {
     if (current_token_index < token_count) {
@@ -551,6 +553,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Dosya açma ve hata kontrolü
     char inputFilename[256];
     snprintf(inputFilename, sizeof(inputFilename), "%s.ppp", argv[1]);
     FILE *dosya = fopen(inputFilename, "r");
@@ -563,7 +566,7 @@ int main(int argc, char *argv[]) {
     int skipMode = 0;
     int strSkip = 0;
     
-    // LEXER PHASE
+    // Satır satır okuma
     while (fgets(line, sizeof(line), dosya)) {
         lineControl++;
         replaceSeperator(line);
@@ -576,7 +579,7 @@ int main(int argc, char *argv[]) {
             printf("Error on line %d: String block is not closed!\n", lineControl-1);
             exit(1);
         }
-        
+        // Tokenization işlemleri
         char *token = strtok(line, " \t\n");
         while (token != NULL) {
             if (strcmp(token, "*") == 0) {
