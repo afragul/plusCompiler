@@ -65,8 +65,6 @@ int blockLineIndex = 0;
 char declaredVariables[MAX_VARS][64];
 int varCount = 0;
 
-
-
 // Variable for interpreter
 typedef struct {
     char name[64];
@@ -142,6 +140,15 @@ void addToken(TokenType type, const char* value, int line) {
 void keywordType(char *type, int lineNumber) {
     if (strcmp(type, "number") == 0) { 
         addToken(TOKEN_KEYWORD, type, lineNumber);
+
+        char* next = strtok(NULL, " \t\n");
+        if (next && isalpha(next[0])) {
+            addToken(TOKEN_IDENTIFIER, next, lineNumber);  // Fixed: Use 'next' instead of 'type'
+            addVariable(next);
+        } else {
+            printf("Error on line %d: Invalid variable declaration after 'number'\n", lineNumber);
+            exit(1);
+        }
         return;
     }
 
@@ -166,6 +173,10 @@ void keywordType(char *type, int lineNumber) {
             addToken(TOKEN_CLOSE_BLOCK, "}", lineNumber);
         }
     } else {
+        if (!isDeclared(type)) {
+            printf("Error on line %d: Undefine variable '%s'\n", lineNumber, type);
+            exit(1);
+        } else
         // Lexer aşamasında sadece identifier olarak işaretle
         // Semantic kontrolü parser aşamasında yap
         addToken(TOKEN_IDENTIFIER, type, lineNumber);
@@ -344,8 +355,8 @@ TreeNode* parseDeclaration() {
     TreeNode* var = createNode(NODE_VARIABLE, var_token.value, var_token.line_number);
     addChild(decl, var);
     
-    // Add to declared variables
-    addVariable(var_token.value);
+    // REMOVED: Don't add variable again - it's already added in keywordType()
+    // addVariable(var_token.value);
     
     consumeToken(); // variable name
     consumeToken(); // ;
