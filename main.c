@@ -65,8 +65,6 @@ int blockLineIndex = 0;
 char declaredVariables[MAX_VARS][64];
 int varCount = 0;
 
-
-
 // Variable for interpreter
 typedef struct {
     char name[64];
@@ -142,6 +140,15 @@ void addToken(TokenType type, const char* value, int line) {
 void keywordType(char *type, int lineNumber) {
     if (strcmp(type, "number") == 0) { 
         addToken(TOKEN_KEYWORD, type, lineNumber);
+
+        char* next = strtok(NULL, " \t\n");
+        if (next && isalpha(next[0])) {
+            addToken(TOKEN_IDENTIFIER, next, lineNumber);  // Fixed: Use 'next' instead of 'type'
+            addVariable(next);
+        } else {
+            printf("Error on line %d: Invalid variable declaration after 'number'\n", lineNumber);
+            exit(1);
+        }
         return;
     }
 
@@ -166,6 +173,10 @@ void keywordType(char *type, int lineNumber) {
             addToken(TOKEN_CLOSE_BLOCK, "}", lineNumber);
         }
     } else {
+        if (!isDeclared(type)) {
+            printf("Error on line %d: Undefine variable '%s'\n", lineNumber, type);
+            exit(1);
+        } else
         // Lexer aşamasında sadece identifier olarak işaretle
         // Semantic kontrolü parser aşamasında yap
         addToken(TOKEN_IDENTIFIER, type, lineNumber);
@@ -283,33 +294,49 @@ TreeNode* parseStatement() {
         if (next.type == TOKEN_OPERATOR) {
             if (strcmp(next.value, ":=") == 0) {
                 return parseAssignment();
-            } else if (strcmp(next.value, "+=") == 0) {
+            }else if (strcmp(next.value, "+=") == 0) {
                 TreeNode* increment = createNode(NODE_INCREMENT, NULL, current.line_number);
                 TreeNode* var = createNode(NODE_VARIABLE, current.value, current.line_number);
                 addChild(increment, var);
                 consumeToken(); // variable
                 consumeToken(); // +=
-                
+
                 Token value_token = getCurrentToken();
-                TreeNode* value = createNode(NODE_VARIABLE, value_token.value, value_token.line_number);
+                TreeNode* value;
+                if (value_token.type == TOKEN_NUMBER) {
+                    value = createNode(NODE_NUMBER, value_token.value, value_token.line_number);
+                } else if (value_token.type == TOKEN_IDENTIFIER) {
+                    value = createNode(NODE_VARIABLE, value_token.value, value_token.line_number);
+                } else {
+                    printf("Error on line %d: Expected number or variable after '+='\n", value_token.line_number);
+                    exit(1);
+                }
                 addChild(increment, value);
                 consumeToken(); // value
                 consumeToken(); // ;
-                
+
                 return increment;
-            } else if (strcmp(next.value, "-=") == 0) {
+            }else if (strcmp(next.value, "-=") == 0) {
                 TreeNode* decrement = createNode(NODE_DECREMENT, NULL, current.line_number);
                 TreeNode* var = createNode(NODE_VARIABLE, current.value, current.line_number);
                 addChild(decrement, var);
                 consumeToken(); // variable
                 consumeToken(); // -=
-                
+
                 Token value_token = getCurrentToken();
-                TreeNode* value = createNode(NODE_VARIABLE, value_token.value, value_token.line_number);
+                TreeNode* value;
+                if (value_token.type == TOKEN_NUMBER) {
+                    value = createNode(NODE_NUMBER, value_token.value, value_token.line_number);
+                } else if (value_token.type == TOKEN_IDENTIFIER) {
+                    value = createNode(NODE_VARIABLE, value_token.value, value_token.line_number);
+                } else {
+                    printf("Error on line %d: Expected number or variable after '-='\n", value_token.line_number);
+                    exit(1);
+                }
                 addChild(decrement, value);
                 consumeToken(); // value
                 consumeToken(); // ;
-                
+
                 return decrement;
             }
         }
@@ -328,8 +355,8 @@ TreeNode* parseDeclaration() {
     TreeNode* var = createNode(NODE_VARIABLE, var_token.value, var_token.line_number);
     addChild(decl, var);
     
-    // Add to declared variables
-    addVariable(var_token.value);
+    // REMOVED: Don't add variable again - it's already added in keywordType()
+    // addVariable(var_token.value);
     
     consumeToken(); // variable name
     consumeToken(); // ;
@@ -399,7 +426,18 @@ TreeNode* parseLoop() {
     consumeToken(); // "repeat"
     
     Token count_token = getCurrentToken();
-    TreeNode* count = createNode(NODE_NUMBER, count_token.value, count_token.line_number);
+    TreeNode* count;
+    
+    // Count hem sabit sayı hem de değişken olabilir
+    if (count_token.type == TOKEN_NUMBER) {
+        count = createNode(NODE_NUMBER, count_token.value, count_token.line_number);
+    } else if (count_token.type == TOKEN_IDENTIFIER) {
+        count = createNode(NODE_VARIABLE, count_token.value, count_token.line_number);
+    } else {
+        printf("Error on line %d: Expected number or variable after 'repeat'\n", count_token.line_number);
+        exit(1);
+    }
+    
     addChild(loop, count);
     
     consumeToken(); // count
